@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Pipeline Notebooklm Configurator",
+  "schemaVersion": 1,
+  "description": "Configurateur interactif du pipeline NotebookLM → Infographie. Charge la liste des notebooks en direct, permet de sélectionner le format, le style visuel, le niveau de détail, la langue, une description personnalisée, et sauvegarde automatiquement pipeline_config.json.",
+  "mcpTools": [
+    "mcp__Windows-MCP__PowerShell"
+  ],
+  "mcpServerNames": [
+    "Windows-MCP"
+  ]
+}
+</script>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pipeline Configurator — NotebookLM</title>
+<style>
+:root { color-scheme: light; --navy:#1B3A5C; --teal:#00A896; --gold:#C9A84C; --ivory:#F7F6F3; --charcoal:#2C2C2C; }
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif; font-size:13px; color:var(--charcoal); background:var(--ivory); }
+
+/* HEADER */
+.header{ background:var(--navy); padding:13px 18px; display:flex; align-items:center; gap:11px; position:sticky; top:0; z-index:10; }
+.h-icon{ width:34px;height:34px;background:var(--teal);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0; }
+.h-title{ color:var(--gold);font-size:14px;font-weight:700; }
+.h-sub{ color:#a0b8cc;font-size:10.5px;margin-top:1px; }
+
+/* STEPPER */
+.stepper{ background:white;border-bottom:1px solid #e8e8e8;padding:10px 18px;display:flex;gap:4px;overflow-x:auto; }
+.step-pill{ display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:16px;font-size:11px;font-weight:600;white-space:nowrap;cursor:pointer;transition:all .15s;border:1.5px solid transparent; }
+.step-pill.done{ background:#e8f7f5;color:var(--teal);border-color:#c0ece8; }
+.step-pill.active{ background:var(--navy);color:white; }
+.step-pill.pending{ color:#aaa;border-color:#e8e8e8; }
+.step-pill .sp-num{ width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0; }
+.step-pill.done   .sp-num{ background:var(--teal);color:white; }
+.step-pill.active .sp-num{ background:white;color:var(--navy); }
+.step-pill.pending .sp-num{ background:#eee;color:#aaa; }
+
+/* MAIN */
+.main{ padding:14px 18px; max-width:600px; padding-bottom:100px; }
+
+/* SECTION */
+.section{ background:white;border-radius:10px;padding:15px 17px;margin-bottom:12px;border:1px solid #e8e8e8;box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.sec-title{ font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--teal);margin-bottom:11px;display:flex;align-items:center;justify-content:space-between; }
+.sec-line{ flex:1;height:1px;background:#e8f7f5;margin-left:8px; }
+
+/* INFO BAR */
+.info-bar{ display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:7px;background:#eef8f7;color:#007a6e;font-size:11.5px;margin-bottom:11px; }
+.dot{ width:7px;height:7px;border-radius:50%;background:var(--teal);flex-shrink:0; }
+
+/* SEARCH */
+.search-wrap{ position:relative;margin-bottom:9px; }
+.search-wrap input{ width:100%;padding:8px 11px 8px 30px;border:1.5px solid #dde3ea;border-radius:7px;font-size:13px;background:white; }
+.search-wrap input:focus{ outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,168,150,.12); }
+.search-ico{ position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--teal);font-size:13px;pointer-events:none; }
+
+/* COUNT ROW */
+.count-row{ display:flex;justify-content:space-between;align-items:center;margin-bottom:7px; }
+.count-label{ font-size:11px;color:#888; }
+.count-num{ font-size:11px;font-weight:700;color:var(--navy);background:#eef3f9;padding:1px 7px;border-radius:8px; }
+
+/* NB LIST */
+.nb-list{ display:flex;flex-direction:column;gap:4px;max-height:360px;overflow-y:auto;padding-right:2px; }
+.nb-list::-webkit-scrollbar{ width:4px; }
+.nb-list::-webkit-scrollbar-track{ background:#f0f0f0;border-radius:4px; }
+.nb-list::-webkit-scrollbar-thumb{ background:var(--teal);border-radius:4px; }
+.nb-card{ display:flex;align-items:center;gap:9px;padding:8px 11px;border:1.5px solid #e0e6ee;border-radius:8px;cursor:pointer;transition:all .12s;background:white;user-select:none; }
+.nb-card:hover{ border-color:var(--teal);background:#f0fbf9; }
+.nb-card.active{ border-color:var(--navy);background:#eef3f9;box-shadow:0 0 0 2px rgba(27,58,92,.10); }
+.nb-dot{ width:8px;height:8px;border-radius:50%;background:#e0e6ee;flex-shrink:0;transition:background .12s; }
+.nb-card:hover .nb-dot{ background:var(--teal); }
+.nb-card.active .nb-dot{ background:var(--gold); }
+.nb-body{ flex:1;min-width:0; }
+.nb-title{ font-size:12.5px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.nb-meta{ font-size:10px;color:#999;margin-top:1px; }
+.nb-badges{ display:flex;gap:4px;flex-shrink:0;align-items:center; }
+.nb-srcs{ background:#f0fbf9;color:var(--teal);font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap; }
+.nb-card.active .nb-srcs{ background:var(--navy);color:var(--gold); }
+.nb-notes{ background:#f4f0fb;color:#7755aa;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap; }
+.nb-card.active .nb-notes{ background:#2d1f4a;color:#c4a0ff; }
+
+/* SELECTED BOX */
+.sel-box{ background:var(--navy);border-radius:8px;padding:10px 13px;display:flex;align-items:center;gap:10px; }
+.sel-title{ font-weight:700;font-size:13px;color:var(--gold); }
+.sel-meta{ font-size:11px;color:#a0b8cc;margin-top:2px; }
+
+/* PILLS (orientation, langue) */
+.pill-grid{ display:flex;flex-wrap:wrap;gap:7px; }
+.pill-opt input[type=radio]{ position:absolute;opacity:0;width:0;height:0; }
+.pill-opt{ position:relative; }
+.pill-opt label{ display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:20px;border:1.5px solid #dde3ea;font-size:12.5px;font-weight:500;color:#555;cursor:pointer;transition:all .13s;user-select:none;white-space:nowrap; }
+.pill-opt label:hover{ border-color:var(--teal);color:var(--teal);background:#eef8f7; }
+.pill-opt input:checked + label{ background:var(--navy);border-color:var(--navy);color:white;font-weight:600; }
+
+/* STYLE CARDS (3x3 grid) */
+.style-grid{ display:grid;grid-template-columns:repeat(3,1fr);gap:7px; }
+.style-card input[type=radio]{ position:absolute;opacity:0;width:0;height:0; }
+.style-card{ position:relative; }
+.style-card label{ display:flex;flex-direction:column;align-items:center;padding:10px 6px 8px;border:1.5px solid #dde3ea;border-radius:9px;cursor:pointer;text-align:center;transition:all .13s;user-select:none; }
+.style-card label:hover{ border-color:var(--teal);background:#eef8f7; }
+.style-card input:checked + label{ border-color:var(--navy);background:#eef3f9;box-shadow:0 0 0 2px rgba(27,58,92,.10); }
+.sc-icon{ font-size:22px;margin-bottom:4px; }
+.sc-name{ font-size:11px;font-weight:700;color:var(--navy); }
+
+/* DETAIL CARDS */
+.detail-grid{ display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
+.detail-card input[type=radio]{ position:absolute;opacity:0;width:0;height:0; }
+.detail-card{ position:relative; }
+.detail-card label{ display:flex;flex-direction:column;align-items:center;padding:10px 6px;border:1.5px solid #dde3ea;border-radius:9px;cursor:pointer;text-align:center;transition:all .13s;user-select:none; }
+.detail-card label:hover{ border-color:var(--teal);background:#eef8f7; }
+.detail-card input:checked + label{ border-color:var(--gold);background:#fdf8ee;box-shadow:0 0 0 2px rgba(201,168,76,.15); }
+.dc-icon{ font-size:20px;margin-bottom:4px; }
+.dc-name{ font-size:12px;font-weight:700;color:var(--navy); }
+.dc-desc{ font-size:9.5px;color:#999;margin-top:2px; }
+
+/* TEXTAREA */
+textarea{ width:100%;padding:9px 11px;border:1.5px solid #dde3ea;border-radius:7px;font-size:12.5px;font-family:inherit;color:var(--charcoal);resize:vertical;min-height:72px;transition:border-color .15s;line-height:1.5; }
+textarea:focus{ outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,168,150,.12); }
+textarea::placeholder{ color:#ccc; }
+
+/* FIELD */
+.field{ margin-bottom:13px; }
+.field:last-child{ margin-bottom:0; }
+.field-label{ display:block;font-size:11.5px;font-weight:600;color:var(--navy);margin-bottom:5px; }
+.field-desc{ font-size:10.5px;color:#888;margin-bottom:6px; }
+
+/* TOGGLE */
+.toggle-row{ display:flex;align-items:center;justify-content:space-between;gap:10px; }
+.toggle{ position:relative;width:38px;height:21px;flex-shrink:0; }
+.toggle input{ opacity:0;width:0;height:0;position:absolute; }
+.toggle-track{ position:absolute;inset:0;background:#ccc;border-radius:11px;cursor:pointer;transition:background .2s; }
+.toggle-track::after{ content:'';position:absolute;left:3px;top:2.5px;width:16px;height:16px;background:white;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.toggle input:checked + .toggle-track{ background:var(--teal); }
+.toggle input:checked + .toggle-track::after{ transform:translateX(17px); }
+
+/* SAVE BTN */
+.btn-save{ width:100%;padding:13px;background:var(--navy);color:white;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;margin-top:4px; }
+.btn-save:hover:not(:disabled){ background:#254d7a;transform:translateY(-1px);box-shadow:0 4px 12px rgba(27,58,92,.25); }
+.btn-save:disabled{ background:#ccc;cursor:not-allowed;transform:none;box-shadow:none; }
+
+/* REFRESH BTN */
+.btn-ref{ font-size:11px;color:var(--teal);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0; }
+
+/* SPINNER */
+.spinner{ width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+/* TOAST */
+.toast{ position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:white;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap; }
+.toast.show{ transform:translateX(-50%) translateY(0); }
+.toast.success{ background:#00796b; }
+.toast.error{ background:#c0392b; }
+
+/* EMPTY */
+.empty{ text-align:center;padding:22px;color:#bbb;font-size:12px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="h-icon">⚙️</div>
+  <div>
+    <div class="h-title">Pipeline Configurator</div>
+    <div class="h-sub">NotebookLM → Infographie automatique</div>
+  </div>
+</div>
+
+<!-- RESET BAR -->
+<div style="background:#fff8e8;border-bottom:1px solid #f0dfa0;padding:7px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+  <span style="font-size:11px;color:#7a5a00;">Modifiez les paramètres puis cliquez sur <strong>Sauvegarder</strong>.</span>
+  <button onclick="resetAll()" style="background:none;border:1.5px solid #C9A84C;color:#7a5a00;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;" onmouseover="this.style.background='#fdf0c0'" onmouseout="this.style.background='none'">↺ Réinitialiser</button>
+</div>
+
+<!-- STEPPER -->
+<div class="stepper" id="stepper">
+  <div class="step-pill active" onclick="scrollTo('s1')"><span class="sp-num">1</span> Notebook</div>
+  <div class="step-pill pending" onclick="scrollTo('s2')"><span class="sp-num">2</span> Format</div>
+  <div class="step-pill pending" onclick="scrollTo('s3')"><span class="sp-num">3</span> Style</div>
+  <div class="step-pill pending" onclick="scrollTo('s4')"><span class="sp-num">4</span> Détail</div>
+  <div class="step-pill pending" onclick="scrollTo('s5')"><span class="sp-num">5</span> Description</div>
+  <div class="step-pill pending" onclick="scrollTo('s6')"><span class="sp-num">6</span> Langue</div>
+</div>
+
+<div class="main">
+
+<!-- ═══ ÉTAPE 1 : NOTEBOOK ═══ -->
+<div class="section" id="s1">
+  <div class="sec-title">
+    <span>📒 1 — Notebook cible</span>
+    <div class="sec-line"></div>
+  </div>
+  <div class="info-bar">
+    <div class="dot"></div>
+    <span id="info-msg" style="flex:1">75 notebooks · mis à jour le 02/06/2026</span>
+    <button id="btn-live" onclick="liveRefresh()" title="Interroger NotebookLM et mettre à jour le cache"
+      style="background:#00A896;color:white;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:4px;">
+      <span id="btn-live-icon">⟳</span> Live
+    </button>
+  </div>
+  <div class="search-wrap">
+    <span class="search-ico">🔍</span>
+    <input type="text" id="search" placeholder="Rechercher par titre…" oninput="filterList(); toggleClear()"/>
+    <span id="search-clear" onclick="clearSearch()" title="Effacer" style="display:none;position:absolute;right:9px;top:50%;transform:translateY(-50%);cursor:pointer;color:#aaa;font-size:16px;line-height:1;user-select:none;" onmouseover="this.style.color='#c0392b'" onmouseout="this.style.color='#aaa'">✕</span>
+  </div>
+  <div class="count-row">
+    <span class="count-label">Notebooks disponibles</span>
+    <span class="count-num" id="count-num">75</span>
+  </div>
+  <div class="nb-list" id="nb-list"></div>
+</div>
+
+<!-- Sélection confirmée -->
+<div class="section" id="sel-section" style="display:none">
+  <div class="sec-title"><span>✅ Notebook sélectionné</span><div class="sec-line"></div></div>
+  <div class="sel-box">
+    <div style="font-size:21px;flex-shrink:0">📒</div>
+    <div>
+      <div class="sel-title" id="sel-title">—</div>
+      <div class="sel-meta"  id="sel-meta">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ÉTAPE 2 : FORMAT ═══ -->
+<div class="section" id="s2">
+  <div class="sec-title"><span>📐 2 — Format</span><div class="sec-line"></div></div>
+  <div class="pill-grid">
+    <div class="pill-opt"><input type="radio" name="orient" id="o-l" value="landscape" checked/><label for="o-l">🖼️ Paysage</label></div>
+    <div class="pill-opt"><input type="radio" name="orient" id="o-p" value="portrait"/><label for="o-p">📄 Portrait</label></div>
+    <div class="pill-opt"><input type="radio" name="orient" id="o-s" value="square"/><label for="o-s">⬜ Carré</label></div>
+  </div>
+</div>
+
+<!-- ═══ ÉTAPE 3 : STYLE VISUEL ═══ -->
+<div class="section" id="s3">
+  <div class="sec-title"><span>🎨 3 — Style visuel</span><div class="sec-line"></div></div>
+  <div class="style-grid">
+    <div class="style-card"><input type="radio" name="style" id="st-clay"  value="clay" checked/><label for="st-clay"><span class="sc-icon">🧸</span><span class="sc-name">Pâte à modeler</span></label></div>
+    <div class="style-card"><input type="radio" name="style" id="st-ske"   value="sketch"/><label for="st-ske"><span class="sc-icon">✏️</span><span class="sc-name">Croquis</span></label></div>
+    <div class="style-card"><input type="radio" name="style" id="st-ani"   value="animated"/><label for="st-ani"><span class="sc-icon">✨</span><span class="sc-name">Animé</span></label></div>
+    <div class="style-card"><input type="radio" name="style" id="st-edi"   value="editorial"/><label for="st-edi"><span class="sc-icon">📰</span><span class="sc-name">Éditorial</span></label></div>
+    <div class="style-card"><input type="radio" name="style" id="st-edu"   value="educational"/><label for="st-edu"><span class="sc-icon">📚</span><span class="sc-name">Éducatif</span></label></div>
+    <div class="style-card"><input type="radio" name="style" id="st-ben"   value="bento_grid"/><label for="st-ben"><span class="sc-icon">🔲</span><span class="sc-name">Grille Bento</span></label></div>
+    <div class="style-card"><input type="radio" name="style" id="st-blo"   value="blocks"/><label for="st-blo"><span class="sc-icon">🧱</span><span class="sc-name">Briques</span></label></div>
+    <div class="style-card"><input type="radio" name="style" id="st-sci"   value="scientific"/><label for="st-sci"><span class="sc-icon">🔬</span><span class="sc-name">Scientifique</span></label></div>
+    <div class="style-card"><input type="radio" name="style" id="st-pro"   value="professional"/><label for="st-pro"><span class="sc-icon">💼</span><span class="sc-name">Professionnel</span></label></div>
+  </div>
+</div>
+
+<!-- ═══ ÉTAPE 4 : NIVEAU DE DÉTAIL ═══ -->
+<div class="section" id="s4">
+  <div class="sec-title"><span>📊 4 — Niveau de détail</span><div class="sec-line"></div></div>
+  <div class="detail-grid">
+    <div class="detail-card"><input type="radio" name="detail" id="d-co" value="concise"/><label for="d-co"><span class="dc-icon">⚡</span><span class="dc-name">Concis</span><span class="dc-desc">L'essentiel</span></label></div>
+    <div class="detail-card"><input type="radio" name="detail" id="d-st" value="standard" checked/><label for="d-st"><span class="dc-icon">⚖️</span><span class="dc-name">Standard</span><span class="dc-desc">Équilibre idéal</span></label></div>
+    <div class="detail-card"><input type="radio" name="detail" id="d-de" value="detailed"/><label for="d-de"><span class="dc-icon">🔍</span><span class="dc-name">Détaillé</span><span class="dc-desc">Exhaustif</span></label></div>
+  </div>
+</div>
+
+<!-- ═══ ÉTAPE 5 : DESCRIPTION ═══ -->
+<div class="section" id="s5">
+  <div class="sec-title"><span>💬 5 — Description personnalisée</span><div class="sec-line"></div></div>
+  <div class="field">
+    <div class="toggle-row">
+      <div>
+        <label class="field-label" style="margin:0">Activer une description</label>
+        <div class="field-desc" style="margin-top:2px">Précisez le style, la couleur ou le thème souhaité</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-desc" onchange="toggleDesc()" checked/>
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+  </div>
+  <div id="desc-area" style="display:block">
+    <div class="field-desc">Exemple : <em>"Utilise un thème bleu marine et mets en avant les 3 statistiques clés. Organise en 3 blocs : contexte, parties, prochaines étapes."</em></div>
+    <textarea id="txt-desc" rows="4">A partir de l'ensemble des notes et des sources procèdes à une analyse puis fait un synthèse!</textarea>
+  </div>
+</div>
+
+<!-- ═══ ÉTAPE 6 : LANGUE ═══ -->
+<div class="section" id="s6">
+  <div class="sec-title"><span>🌐 6 — Langue</span><div class="sec-line"></div></div>
+  <div class="pill-grid">
+    <div class="pill-opt"><input type="radio" name="lang" id="l-fr" value="fr" checked/><label for="l-fr">🇫🇷 Français</label></div>
+    <div class="pill-opt"><input type="radio" name="lang" id="l-en" value="en"/><label for="l-en">🇬🇧 Anglais</label></div>
+    <div class="pill-opt"><input type="radio" name="lang" id="l-ar" value="ar"/><label for="l-ar">🇲🇦 Arabe</label></div>
+  </div>
+</div>
+
+<!-- ═══ BOUTON SAUVEGARDER ═══ -->
+<button class="btn-save" id="btn-save" onclick="saveConfig()" disabled>
+  💾 Sauvegarder la configuration
+</button>
+
+</div><!-- /main -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  DONNÉES NOTEBOOKS (session 01/06/2026)
+// ══════════════════════════════════════════════
+const NOTEBOOKS_DATA = [
+  {id:"975df85c-023f-4e6c-97bf-b22d801b9508",title:"test",source_count:2,modified_at:"2026-06-02T01:21:29Z",note_count:0},
+  {id:"b625b753-3e7c-4721-9c9f-d4ce0524e2bf",title:"2,1 Affaire Rakuten",source_count:63,modified_at:"2026-06-01T21:04:11Z",note_count:36},
+  {id:"8aea129b-6b94-44bc-95d9-913fb3f8e0c9",title:"2026-03-15 Carte_de_Circulation_Lina_Aketous",source_count:57,modified_at:"2026-05-30T00:35:16Z",note_count:11},
+  {id:"ce46740e-b7ba-4389-95bd-15fda59928c1",title:"2026-05-28 - Changement - Alpic --> Edf Tempo",source_count:26,modified_at:"2026-05-29T23:44:49Z",note_count:1},
+  {id:"fbe68cc5-ad9e-43ba-bb98-eef8c931d5b9",title:"Vente Opel",source_count:28,modified_at:"2026-05-27T15:47:00Z",note_count:9},
+  {id:"40165ecc-e3be-4152-a212-e41898b796c8",title:"2026-05-24 - Déclaration impôts sur le revenu 2026",source_count:24,modified_at:"2026-05-24T00:29:16Z",note_count:3},
+  {id:"4912e138-ddc4-4e64-952a-7ba6ee579bca",title:"2026-02-09-Stèle_Maman",source_count:10,modified_at:"2026-05-23T20:54:56Z",note_count:5},
+  {id:"3809ccff-f09b-46a1-9d1c-95a942636913",title:"2026-04-18 - Dossier Carte séjour Moussa 2026",source_count:14,modified_at:"2026-05-04T14:44:56Z",note_count:0},
+  {id:"d1aa2ec4-718e-4f34-89f0-bb707ed7736b",title:"Claude - Rapport de sessions",source_count:30,modified_at:"2026-05-02T18:20:50Z",note_count:2},
+  {id:"d300e15e-3e26-49b5-a7c2-24d0330ef29b",title:"Demande carte de séjour Moussa et Dossier MSA",source_count:6,modified_at:"2026-04-18T22:38:46Z",note_count:1},
+  {id:"4ed75377-9ab4-4265-b064-b5f355938d1e",title:"2026-04-13 - Configuration, optimisation Claude",source_count:33,modified_at:"2026-04-16T20:27:12Z",note_count:0},
+  {id:"a167a155-eb5e-4228-9a0e-f18600e4c671",title:"Claude Configuration et optimisation",source_count:13,modified_at:"2026-04-16T20:26:48Z",note_count:0},
+  {id:"8213c712-c419-446e-86aa-42ffcf0d6920",title:"Claude - Ressources",source_count:3,modified_at:"2026-04-16T19:23:55Z",note_count:0},
+  {id:"439b6eac-4fde-4e03-90bb-cd4b3fc1abe0",title:"2026-01-26 - Sick Leave Reclassification",source_count:16,modified_at:"2026-04-13T09:56:39Z",note_count:6},
+  {id:"844ee8b1-6d50-4c90-97d9-41e1f808fa6d",title:"2025-12-20 - Fournisseur Électricité Alpic",source_count:1,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"ed84b7f3-ccee-4fef-a436-ae4ed597b840",title:"1,3 Mission Locale Oussama Aketous",source_count:3,modified_at:"2026-04-13T09:56:39Z",note_count:2},
+  {id:"45606c7f-0d36-416c-9886-bb3bcd25df7c",title:"1,2 Réintégration scolaire Oussama AKETOUS",source_count:48,modified_at:"2026-04-13T09:56:39Z",note_count:21},
+  {id:"7d4a408d-2046-4580-9caf-52b35f4728b4",title:"Découverte de l'IA Générative",source_count:1,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"06a9861d-cc1e-44e5-a42e-9f72d2a037f3",title:"Audacity : Les Cinq Clés d'une Voix Professionnelle",source_count:3,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"b0e7c680-8f6e-4439-acb8-cc7dd0785498",title:"2025-11-28 - Pb cumulus",source_count:5,modified_at:"2026-04-13T09:56:39Z",note_count:1},
+  {id:"63352b6b-326d-42d0-9826-4291fdee1fa0",title:"2026-01-06 - Urétroplastie - Suivi santé",source_count:27,modified_at:"2026-04-13T09:56:39Z",note_count:1},
+  {id:"c9507662-ca88-4000-a5b8-4ec4f9a7cc13",title:"2,2 Médiateur FEVAD",source_count:8,modified_at:"2026-04-13T09:56:39Z",note_count:1},
+  {id:"e10efb7a-30b2-407b-887c-73816a266177",title:"2026-03-18 Santé Sylviane",source_count:3,modified_at:"2026-04-13T09:56:39Z",note_count:1},
+  {id:"0dd15680-3121-4704-aee3-ab3c6ebb6560",title:"2025-11-22 - Liste de musique Elisabeth",source_count:2,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"2c2db1ce-ae6e-4506-93a0-dadcf345264d",title:"Déclaration impôts sur le revenu 2025",source_count:11,modified_at:"2026-04-13T09:56:39Z",note_count:2},
+  {id:"c85bb0d4-12db-4b13-8e4c-bc618c392119",title:"2026-02-16 - Formulaire GC3S",source_count:4,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"f95f0d6a-86ce-49e8-8855-7f8fd153745b",title:"2025-11-11 - EDF - Problème WC et Douche",source_count:9,modified_at:"2026-04-13T09:56:39Z",note_count:3},
+  {id:"24b59099-f680-47da-8dfa-b6bf86eba1ef",title:"2026-03-17 Dossier Dominique",source_count:3,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"7a6fcfcd-862a-474e-9de6-937d589ea5eb",title:"2026-02-25 - Pc Gwen",source_count:9,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"834ddd71-9d66-4f07-90da-a45f24e6aab4",title:"AMF Blacklist - Crypto Derivatives",source_count:10,modified_at:"2026-04-13T09:56:39Z",note_count:3},
+  {id:"d6d39fb5-3802-42c6-9d75-f746d28f4709",title:"2026-03-26 NoteBookLM extends",source_count:1,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"49b518cf-6ab0-4362-a9df-5eeb47bc190f",title:"3,0 Fournisseur Électricité",source_count:13,modified_at:"2026-04-13T09:56:39Z",note_count:2},
+  {id:"dcc37025-0181-4d40-b34a-ba80b7410570",title:"2026 - Achats",source_count:3,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"44c0b4a9-0444-4f29-ba5d-d1614a2d5090",title:"2026-02-24 - Lettre à Michèle",source_count:1,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"492b735b-1d95-491e-96e0-799944a7f026",title:"2026-03-25 Dossier Maladie Dominique",source_count:4,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"7365f02d-4c48-46c6-ab95-fbb414df58ca",title:"Automatisation YouTube : Stratégies et Pièges",source_count:1,modified_at:"2026-04-13T09:56:39Z",note_count:1},
+  {id:"a4fecd16-6d06-46b8-855d-d88146b48208",title:"2025-12-11 - Profil CLV",source_count:2,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"2a06d2cc-504b-45ba-b5fb-2599f0633170",title:"2026-03-06 - Bac à fleur",source_count:1,modified_at:"2026-04-13T09:56:39Z",note_count:1},
+  {id:"99b916d3-2801-4dde-9a12-5908c8e9d9c9",title:"Financial Technical Indicators",source_count:1,modified_at:"2026-04-13T09:56:39Z",note_count:2},
+  {id:"b5cc0f98-dec7-4e7c-bcd0-ee044aca3a3c",title:"Automobile Maintenance and Career Paths",source_count:2,modified_at:"2026-04-13T09:56:39Z",note_count:3},
+  {id:"e70d98a8-54dc-441a-a03d-4631989179d5",title:"2025-10-27 - Étude optimisation Favoris Internet",source_count:1,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"1f3e3bda-c163-4651-8cec-aad4505b4d68",title:"Analyse optimisation devis Scénic",source_count:8,modified_at:"2026-04-13T09:56:39Z",note_count:3},
+  {id:"e6198b9f-0131-4a74-a3a9-ef6afb826806",title:"Dental Treatment Estimate - Dr. Chevallier",source_count:7,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"02edf892-28f2-4536-a6de-cc2215103a78",title:"February Profit Plan - CAC 40 Nasdaq Crypto",source_count:2,modified_at:"2026-04-13T09:56:39Z",note_count:2},
+  {id:"925e7b5c-e23a-4267-8b2d-c4c88fa4b39a",title:"Emploi Sylviane",source_count:3,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"cd84b49c-de80-4cd0-aa08-4af3b5472149",title:"2025-11-10 - Animations 3D virales par IA",source_count:1,modified_at:"2026-04-13T09:56:39Z",note_count:1},
+  {id:"5c15b22c-bf2e-483b-a4d5-31d5e41222e9",title:"Demande Apprentissage",source_count:12,modified_at:"2026-04-13T09:56:39Z",note_count:2},
+  {id:"00539f5c-d267-406c-aaa8-af5f23d7f757",title:"High-End Enthusiast PC Build",source_count:2,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"e286dbf5-b446-4fbc-9c76-dee1d4eaf498",title:"IA Automatisation d'Agence",source_count:10,modified_at:"2026-04-13T09:56:39Z",note_count:4},
+  {id:"df59451e-1955-442d-9d8d-e34bdd6153c9",title:"2025-12-20 - Veille technologique",source_count:1,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"81f276cf-6934-4965-82ce-cbdf17b708b0",title:"Fonctionnalités NotebookLM - Sources",source_count:2,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"a34c067d-9ed8-4e05-bac4-e06c7fb3c77a",title:"FR - Carte de séjour - renouvellement 2026",source_count:0,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"a7306a58-3502-42fb-b45d-2cf3d69cb5cf",title:"Dossier Omar Aketous - Aide au logement",source_count:1,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"8cea70e0-e28c-44cf-b15b-4fa735d3393e",title:"France Family and Housing Aid",source_count:3,modified_at:"2026-04-13T09:56:39Z",note_count:0},
+  {id:"c95f8612-4eb9-4256-91e0-7a2da489f902",title:"1,1 - Dossier Aketous Oussama",source_count:26,modified_at:"2026-04-13T09:55:19Z",note_count:18},
+  {id:"30df868d-939b-45d1-8a84-c8487d04f97d",title:"Migration Windows 10 vers 11 - Pc Yves Bouyer",source_count:26,modified_at:"2026-04-13T09:55:19Z",note_count:5},
+  {id:"e5dd784c-dc15-41b3-a497-e7b270c1ab16",title:"Vidéos tutos IA et informatique",source_count:2,modified_at:"2026-04-13T09:55:19Z",note_count:0},
+  {id:"8be7f953-cfa2-4c2c-b00c-b1b96ad74a36",title:"Agents IA en 2 clics avec les MCP Tools",source_count:3,modified_at:"2026-04-13T09:55:19Z",note_count:5},
+  {id:"617a13e6-fb3e-4755-a4b6-95f8ca35d31e",title:"Projet Abri de jardin",source_count:9,modified_at:"2026-04-13T09:55:19Z",note_count:1},
+  {id:"50f855dc-899d-4b9b-88f5-a8518f73008b",title:"Rachid Boughou",source_count:2,modified_at:"2026-04-13T09:55:19Z",note_count:0},
+  {id:"a7bcc917-60f5-4f42-8923-f3ffbe1bff1e",title:"Mr. Levannier's Biological Reports",source_count:4,modified_at:"2026-04-13T09:55:19Z",note_count:4},
+  {id:"547b87ed-980c-40a3-ac12-7b678b07e5a3",title:"Fonctionnalités NotebookLM - Dossiers & Prompts",source_count:3,modified_at:"2026-04-13T09:55:19Z",note_count:0},
+  {id:"55309a4a-0c29-48be-a2fe-7a80827966d8",title:"IA Gratuite : 55 Outils Pros 0€",source_count:2,modified_at:"2026-04-13T09:55:19Z",note_count:5},
+  {id:"bd439203-2f47-4ecc-b287-04915dbd38c0",title:"Imprimante LaserJet M110 we",source_count:5,modified_at:"2026-04-13T09:55:19Z",note_count:2},
+  {id:"770365bb-7f1e-4a68-a9ba-33ced4d017b5",title:"Serge Bousquet-Cassagne - Agriculture française",source_count:5,modified_at:"2026-04-13T09:55:19Z",note_count:2},
+  {id:"7ac96f14-9c96-4393-ae51-258ae1b0255e",title:"Informations Aketous Omar",source_count:0,modified_at:"2026-04-13T09:55:19Z",note_count:0},
+  {id:"0a7d4db4-754d-41ee-9b8c-e39002f713d6",title:"Transcriptions",source_count:2,modified_at:"2026-04-13T09:55:19Z",note_count:4},
+  {id:"f963bcae-c0eb-41a8-b2c4-9a53f966fb6c",title:"Le Bouillon Jardinier à la Volaille",source_count:1,modified_at:"2026-04-13T09:55:19Z",note_count:0},
+  {id:"00d3bdc9-d3d6-4e6f-b7ac-bf1164883a5c",title:"Rent Revision Notice - Fumel Property",source_count:1,modified_at:"2026-04-13T09:55:19Z",note_count:0},
+  {id:"f65cf52a-4306-46db-bc62-aa2eae2e5547",title:"Urology Mind Map - Uro-Cystography",source_count:1,modified_at:"2026-04-13T09:55:19Z",note_count:0},
+  {id:"6c9f3407-fb6b-40eb-b3b7-45d3dc817d5a",title:"NERIS Analytics - Terms & Privacy",source_count:0,modified_at:"2026-04-13T09:55:19Z",note_count:0},
+  {id:"ade09ee6-9279-46fb-b151-6494e23253f0",title:"IPTV Service Information",source_count:1,modified_at:"2026-04-13T09:55:19Z",note_count:1}
+];
+
+// ══════════════════════════════════════════════
+let allNotebooks = [...NOTEBOOKS_DATA];
+let selectedNb   = null;
+
+// Extraire le texte depuis n'importe quel format MCP (FastMCP ou legacy)
+function mcpText(r) {
+  if (typeof r === 'string') return r;
+  if (r?.content?.[0]?.text) return r.content[0].text;
+  if (r?.result) return r.result;
+  return JSON.stringify(r);
+}
+
+window.addEventListener('load', async () => {
+  renderList(allNotebooks); // affichage immédiat avec données embarquées
+  await loadFromCache();    // puis mise à jour depuis le cache disque
+});
+
+// ── REFRESH LIVE ─────────────────────────────
+async function liveRefresh() {
+  const btn  = document.getElementById('btn-live');
+  const icon = document.getElementById('btn-live-icon');
+  const info = document.getElementById('info-msg');
+  btn.disabled = true;
+  icon.style.animation = 'spin .7s linear infinite';
+  info.textContent = 'Connexion à NotebookLM…';
+
+  const PS_LAUNCH = 'Remove-Item "C:\\Users\\levan\\Documents\\Infographies_Auto\\note_counts.json" -ErrorAction SilentlyContinue; Start-Process "C:\\Python314\\python.exe" -ArgumentList "C:\\Users\\levan\\Documents\\Infographies_Auto\\refresh_notebooks.py" -NoNewWindow -RedirectStandardOutput "C:\\Users\\levan\\Documents\\Infographies_Auto\\py_out.txt" -RedirectStandardError "C:\\Users\\levan\\Documents\\Infographies_Auto\\py_err.txt" -PassThru; Write-Output "LAUNCHED"';
+  const PS_POLL   = 'if(Test-Path "C:\\Users\\levan\\Documents\\Infographies_Auto\\note_counts.json"){Get-Content "C:\\Users\\levan\\Documents\\Infographies_Auto\\note_counts.json" -Raw -Encoding utf8}else{"MISSING"}';
+
+  try {
+    // Étape 1 : lancer Python en arrière-plan (retour immédiat)
+    const r1 = await window.cowork.callMcpTool('mcp__Windows-MCP__PowerShell', { command: PS_LAUNCH, timeout: 10 });
+    const t1 = mcpText(r1);
+    if (!t1.includes('LAUNCHED')) throw new Error('Lancement: ' + t1.slice(0, 100));
+
+    // Étape 2 : polling toutes les 3s jusqu'à 30s max
+    let counts = null;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await new Promise(r => setTimeout(r, 3000));
+      info.textContent = `Mise à jour en cours… (${(attempt+1)*3}s)`;
+      const r2  = await window.cowork.callMcpTool('mcp__Windows-MCP__PowerShell', { command: PS_POLL, timeout: 8 });
+      const raw = mcpText(r2);
+      const iS = raw.indexOf('{'), iE = raw.lastIndexOf('}');
+      if (iS !== -1 && iE !== -1) {
+        counts = JSON.parse(raw.slice(iS, iE + 1));
+        break;
+      }
+    }
+    if (!counts) throw new Error('Timeout — note_counts.json non disponible après 30s');
+
+    // Fusionner et afficher
+    allNotebooks.forEach(nb => { if (counts[nb.id] !== undefined) nb.note_count = counts[nb.id]; });
+    renderList(allNotebooks);
+    const nb2 = allNotebooks.filter(n => n.note_count > 0).length;
+    info.textContent = `${allNotebooks.length} notebooks · ${nb2} avec notes · ${new Date().toLocaleTimeString('fr-FR')}`;
+    showToast(`✅ ${nb2} notebooks avec notes`, 'success');
+
+  } catch(e) {
+    info.textContent = 'Erreur : ' + e.message.slice(0, 80);
+    showToast('❌ ' + e.message.slice(0, 80), 'error');
+  } finally {
+    btn.disabled = false;
+    icon.style.animation = '';
+  }
+}
+
+// ── CHARGEMENT CACHE DISQUE ──────────────────
+async function loadFromCache() {
+  try {
+    const res = await window.cowork.callMcpTool('mcp__Windows-MCP__PowerShell', {
+      command: 'if(Test-Path "C:\\Users\\levan\\Documents\\Infographies_Auto\\note_counts.json"){Get-Content "C:\\Users\\levan\\Documents\\Infographies_Auto\\note_counts.json" -Raw -Encoding utf8}else{"MISSING"}',
+      timeout: 10
+    });
+    const txt = mcpText(res);
+    const iS = txt.indexOf('{'), iE = txt.lastIndexOf('}');
+    if (iS === -1) return;
+    const counts = JSON.parse(txt.slice(iS, iE + 1));
+    allNotebooks.forEach(nb => { if (counts[nb.id] !== undefined) nb.note_count = counts[nb.id]; });
+    renderList(allNotebooks);
+    document.getElementById('info-msg').textContent = `${allNotebooks.length} notebooks · notes chargées`;
+  } catch(e) {
+    // cache absent ou erreur → données embarquées conservées
+  }
+}
+
+// ── NOTE COUNT (au clic → cache) ─────────────
+async function fetchNoteCount(nb) {
+  // Si déjà dans le cache local, afficher directement
+  if (nb.note_count !== undefined) {
+    const el = document.getElementById('note-count');
+    if (el) el.textContent = nb.note_count;
+    return;
+  }
+  try {
+    const cmd = `$n = & 'C:\\Python314\\Scripts\\nlm.exe' note list '${nb.id}' --json 2>&1; $p = ($n -join "\`n") | ConvertFrom-Json; if ($p -is [array]) { Write-Output "NOTES:$($p.Count)" } else { Write-Output "NOTES:0" }`;
+    const res = await window.cowork.callMcpTool('mcp__Windows-MCP__PowerShell', { command: cmd, timeout: 15 });
+    const txt = typeof res === 'string' ? res : (res?.result || '');
+    const m = txt.match(/NOTES:(\d+)/);
+    const count = m ? parseInt(m[1]) : 0;
+
+    // Mettre à jour dans allNotebooks
+    const idx = allNotebooks.findIndex(n => n.id === nb.id);
+    if (idx >= 0) allNotebooks[idx].note_count = count;
+
+    // Afficher dans le panel sélection
+    const el = document.getElementById('note-count');
+    if (el) el.textContent = count;
+
+    // Mettre à jour la carte dans la liste
+    const cards = document.querySelectorAll('.nb-card');
+    cards.forEach(card => {
+      if (card.dataset.id === nb.id) {
+        const badge = card.querySelector('.nb-notes');
+        if (badge) badge.textContent = '📝 ' + count;
+      }
+    });
+
+    // Sauvegarder dans le cache disque (silencieux)
+    saveNoteCountToCache(nb.id, count);
+  } catch(e) {
+    const el = document.getElementById('note-count');
+    if (el) el.textContent = '?';
+  }
+}
+
+async function saveNoteCountToCache(nbId, count) {
+  try {
+    const ps = `
+$cache = Get-Content 'C:\\Users\\levan\\Documents\\Infographies_Auto\\notebooks_cache.json' -Raw -Encoding utf8 | ConvertFrom-Json
+$nb = $cache.notebooks | Where-Object { $_.id -eq '${nbId}' }
+if ($nb) { $nb | Add-Member -NotePropertyName 'note_count' -NotePropertyValue ${count} -Force }
+$cache | ConvertTo-Json -Depth 5 | Out-File 'C:\\Users\\levan\\Documents\\Infographies_Auto\\notebooks_cache.json' -Encoding utf8 -Force
+Write-Output "SAVED"`;
+    await window.cowork.callMcpTool('mcp__Windows-MCP__PowerShell', { command: ps, timeout: 10 });
+  } catch(e) { /* silencieux */ }
+}
+
+// ── RESET FORMULAIRE ─────────────────────────
+function resetAll(){
+  // Notebook
+  selectedNb = null;
+  document.getElementById('sel-section').style.display = 'none';
+  document.getElementById('btn-save').disabled = true;
+  // Recherche
+  document.getElementById('search').value = '';
+  document.getElementById('search-clear').style.display = 'none';
+  renderList(allNotebooks);
+  // Orientation → landscape
+  document.querySelector('input[name=orient][value=landscape]').checked = true;
+  // Style → clay
+  document.querySelector('input[name=style][value=clay]').checked = true;
+  // Détail → standard
+  document.querySelector('input[name=detail][value=standard]').checked = true;
+  // Langue → fr
+  document.querySelector('input[name=lang][value=fr]').checked = true;
+  // Description → off
+  document.getElementById('tog-desc').checked = true;
+  document.getElementById('desc-area').style.display = 'block';
+  document.getElementById('txt-desc').value = 'A partir de l\'ensemble des notes et des sources procèdes à une analyse puis fait un synthèse!';
+  // Stepper
+  document.querySelectorAll('.step-pill').forEach((p,i)=>{
+    p.className = 'step-pill ' + (i===0 ? 'active' : 'pending');
+  });
+  // Scroll haut
+  window.scrollTo({top:0, behavior:'smooth'});
+  showToast('↺ Formulaire réinitialisé', '');
+}
+
+
+// ── RENDU ────────────────────────────────────
+function renderList(list) {
+  const c=document.getElementById('nb-list');
+  c.innerHTML='';
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  document.getElementById('count-num').textContent=
+    list.length<allNotebooks.length?`${list.length} / ${allNotebooks.length}`:allNotebooks.length;
+  if(!list.length){c.innerHTML='<div class="empty">Aucun notebook ne correspond.</div>';return;}
+  list.forEach(nb=>{
+    const active=selectedNb?.id===nb.id;
+    const card=document.createElement('div');
+    card.className='nb-card'+(active?' active':'');
+    card.dataset.id=nb.id;
+    card.onclick=()=>selectNb(nb);
+    const d=nb.modified_at?new Date(nb.modified_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    const notes = nb.note_count !== undefined ? nb.note_count : '—';
+    const noteBadge = `<span class="nb-notes" title="Notes">📝 ${notes}</span>`;
+    card.innerHTML=`<div class="nb-dot"></div><div class="nb-body"><div class="nb-title">${esc(nb.title)}</div><div class="nb-meta">${nb.source_count??0} source${(nb.source_count??0)!==1?'s':''} · ${d}</div></div><div class="nb-badges"><span class="nb-srcs" title="Sources">📄 ${nb.source_count??0}</span>${noteBadge}</div>`;
+    c.appendChild(card);
+  });
+}
+
+function filterList(){
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  renderList(q?allNotebooks.filter(n=>n.title.toLowerCase().includes(q)):allNotebooks);
+}
+function toggleClear(){
+  const val=document.getElementById('search').value;
+  document.getElementById('search-clear').style.display=val?'block':'none';
+}
+function clearSearch(){
+  document.getElementById('search').value='';
+  document.getElementById('search-clear').style.display='none';
+  renderList(allNotebooks);
+  document.getElementById('search').focus();
+}
+
+function selectNb(nb){
+  selectedNb=nb;
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  renderList(q?allNotebooks.filter(n=>n.title.toLowerCase().includes(q)):allNotebooks);
+  const d=nb.modified_at?new Date(nb.modified_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
+  document.getElementById('sel-title').textContent=nb.title;
+  document.getElementById('sel-meta').innerHTML=`${nb.source_count??0} sources &nbsp;·&nbsp; 📝 <span id="note-count"><span style="display:inline-block;width:10px;height:10px;border:1.5px solid #a0b8cc;border-top-color:#C9A84C;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle"></span></span> notes &nbsp;·&nbsp; Modifié le ${d}`;
+  document.getElementById('sel-section').style.display='block';
+  document.getElementById('btn-save').disabled=false;
+  fetchNoteCount(nb);
+  updateStepper();
+  showToast('📒 Notebook sélectionné','success');
+}
+
+// ── STEPPER ──────────────────────────────────
+function updateStepper(){
+  const pills=document.querySelectorAll('.step-pill');
+  pills.forEach((p,i)=>{
+    p.className='step-pill '+(i===0?'done':(i<=5?'done':'pending'));
+  });
+}
+
+function scrollTo(id){
+  document.getElementById(id).scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── DESC TOGGLE ──────────────────────────────
+function toggleDesc(){
+  document.getElementById('desc-area').style.display=
+    document.getElementById('tog-desc').checked?'block':'none';
+}
+
+// ── CONFIG & SAVE ────────────────────────────
+function getConfig(){
+  const orient = document.querySelector('input[name=orient]:checked')?.value||'landscape';
+  const style  = document.querySelector('input[name=style]:checked')?.value||'clay';
+  const detail = document.querySelector('input[name=detail]:checked')?.value||'standard';
+  const lang   = document.querySelector('input[name=lang]:checked')?.value||'fr';
+  const descOn = document.getElementById('tog-desc').checked;
+  const desc   = document.getElementById('txt-desc').value.trim();
+  const focus  = descOn&&desc ? desc
+    : `Synthèse visuelle complète du notebook "${selectedNb?.title||''}" : faits clés, chronologie, parties impliquées, enjeux, état actuel, prochaines étapes.`;
+  return {
+    notebook:{ name:selectedNb?.title||'', id:selectedNb?.id||'', match_mode:'contains' },
+    infographic:{ orientation:orient, detail_level:detail, language:lang, style, focus_prompt:focus },
+    analysis:{ enabled:true, query:'Synthèse complète : faits, chronologie, acteurs, enjeux, état actuel' },
+    output:{ folder:'C:/Users/levan/Documents/Infographies_Auto/outputs', overwrite:false },
+    polling:{ interval_seconds:20, max_wait_seconds:240, retry:{ max_attempts:3 } },
+    notifications:{ enabled:true }
+  };
+}
+
+async function saveConfig(){
+  if(!selectedNb) return;
+  const btn=document.getElementById('btn-save');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span> Sauvegarde…';
+  try {
+    const cfg=getConfig();
+    const json=JSON.stringify(cfg,null,2);
+    const psCmd=`
+$dir='C:\\Users\\levan\\Documents\\Infographies_Auto'
+if(!(Test-Path $dir)){New-Item -ItemType Directory -Force -Path $dir|Out-Null}
+@'
+${json}
+'@ | Out-File -FilePath "$dir\\pipeline_config.json" -Encoding utf8 -Force
+Write-Output "SAVED_OK"`;
+    const res=await window.cowork.callMcpTool('mcp__Windows-MCP__PowerShell',{command:psCmd,timeout:15});
+    const txt=typeof res==='string'?res:JSON.stringify(res);
+    if(txt.includes('SAVED_OK')||txt.includes('Status Code: 0')){
+      showToast('✅ pipeline_config.json sauvegardé !','success');
+    } else {
+      throw new Error(txt.slice(0,120));
+    }
+  } catch(e){
+    showToast('❌ '+e.message,'error');
+  } finally {
+    btn.disabled=false;
+    btn.innerHTML='💾 Sauvegarder la configuration';
+  }
+}
+
+// ── UTILS ────────────────────────────────────
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast '+type;
+  void t.offsetWidth;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>

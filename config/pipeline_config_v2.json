@@ -1,0 +1,115 @@
+{
+  "_comment":  "NotebookLM Multi-Output Pipeline v2.0 — Config complète",
+  "_version":  "2.0",
+  "_author":   "Christian Levannier",
+  "_updated":  "2026-06-04",
+
+  "notebook": {
+    "_comment":    "Nom du notebook NotebookLM (correspondance partielle acceptée)",
+    "name":        "2,1 Affaire Rakuten",
+    "match_mode":  "contains",
+    "_options_match_mode": ["exact", "contains", "starts_with"]
+  },
+
+  "output_types": [
+    "audio",
+    "slide_deck",
+    "report",
+    "flashcards",
+    "quiz",
+    "data_table",
+    "mind_map",
+    "infographic"
+  ],
+  "_comment_types": "Retirer les types non désirés. video = expérimental.",
+
+  "outputs": {
+    "audio": {
+      "format":   "deep_dive",
+      "length":   "default",
+      "language": "fr",
+      "_options_format": ["deep_dive", "brief", "critique", "debate"],
+      "_options_length": ["short", "default", "long"]
+    },
+    "video": {
+      "format": "explainer",
+      "_options_format": ["explainer", "cinematic"]
+    },
+    "slide_deck": {
+      "format":      "detailed_deck",
+      "file_format": "pdf",
+      "language":    "fr",
+      "_options_format":      ["detailed_deck", "presenter_slides"],
+      "_options_file_format": ["pdf", "pptx"]
+    },
+    "infographic": {
+      "orientation":  "landscape",
+      "style":        "auto_select",
+      "language":     "fr",
+      "_options_orientation": ["landscape", "portrait"],
+      "_options_style": ["auto_select","timeline","flowchart","comparison",
+                         "statistics","process","hierarchical"]
+    },
+    "report": {
+      "format":   "Briefing Doc",
+      "language": "fr",
+      "_options_format": ["Briefing Doc", "Study Guide", "FAQ", "Timeline"]
+    },
+    "mind_map": {
+      "title": "Synthèse",
+      "_note": "Bug nlm v0.6.15 — download retourne métadonnées seulement"
+    },
+    "flashcards": {
+      "difficulty":    "medium",
+      "_options_difficulty": ["easy", "medium", "hard"]
+    },
+    "quiz": {
+      "question_count": 10,
+      "difficulty":     "medium",
+      "_options_difficulty": ["easy", "medium", "hard"]
+    },
+    "data_table": {
+      "_note": "Tableau synthétique des données clés"
+    }
+  },
+
+  "execution": {
+    "mode":               "sequential",
+    "continue_on_error":  true,
+    "polling_interval_s": 15,
+    "timeout_min":        12,
+    "_comment_mode": "sequential recommandé (évite rate limits NLM)",
+    "_fix_v2_login": "nlm login --force exécuté automatiquement avant chaque session"
+  },
+
+  "output_dir": "C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer\\outputs",
+
+  "notifications": {
+    "enabled":    true,
+    "on_success": true,
+    "on_failure": true,
+    "log_file":   "C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer\\logs\\pipeline_v2_log.json"
+  },
+
+  "_known_bugs": {
+    "mind_map_download": {
+      "version":     "nlm v0.6.15",
+      "symptom":     "nlm download mind-map retourne Response Data null",
+      "workaround":  "Métadonnées seulement + lien direct NLM",
+      "fix_expected": "nlm > v0.6.15"
+    },
+    "audio_302_redirect": {
+      "version":     "nlm v0.6.15",
+      "symptom":     "nlm download audio/video → HTTP 302 → login si token expiré",
+      "fix":         "nlm login --force avant chaque run (intégré dans phase0_preflight)",
+      "status":      "RÉSOLU dans pipeline_runner_v2.py"
+    }
+  },
+
+  "_examples": {
+    "veille_hebdo":    {"output_types": ["report", "audio", "infographic"]},
+    "formation":       {"output_types": ["slide_deck", "quiz", "flashcards", "audio"]},
+    "dossier_juridique": {"output_types": ["report", "data_table", "mind_map"]},
+    "pack_complet":    {"output_types": ["audio","slide_deck","report","flashcards","quiz","data_table","infographic"]}
+  }
+}

@@ -1,0 +1,26 @@
+﻿# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+*.egg-info/
+
+# Outputs (fichiers générés — ne pas versionner)
+outputs/
+logs/
+
+# Config avec données personnelles (utiliser config_v2.json comme template)
+# Décommenter si votre config contient des IDs de notebooks sensibles
+# config/pipeline_config_v2.json
+
+# Système
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+
+# Tokens
+*_token*
+*_secret*
+.env

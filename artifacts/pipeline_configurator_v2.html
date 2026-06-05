@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Pipeline NLM Multi-Output v2",
+  "schemaVersion": 1,
+  "description": "Configurateur v2 — sélectionne notebook + 9 types de sortie NLM (audio, vidéo, slides, infographie, rapport, mind map, flashcards, quiz, tableau) avec options par type, sauvegarde pipeline_config_v2.json et lance le pipeline.",
+  "mcpTools": ["mcp__Windows-MCP__PowerShell"],
+  "mcpServerNames": ["Windows-MCP"]
+}
+</script>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Pipeline NLM Multi-Output v2</title>
+<style>
+:root{color-scheme:light;--navy:#1B3A5C;--teal:#00A896;--gold:#C9A84C;--ivory:#F7F6F3;--charcoal:#2C2C2C;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:13px;color:var(--charcoal);background:var(--ivory);}
+
+/* HEADER */
+.header{background:var(--navy);padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20;}
+.h-icon{width:32px;height:32px;background:var(--teal);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.h-title{color:var(--gold);font-size:14px;font-weight:700;}
+.h-sub{color:#a0b8cc;font-size:10px;margin-top:1px;}
+.h-badge{margin-left:auto;background:var(--gold);color:var(--navy);font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;}
+
+/* STEPPER */
+.stepper{background:white;border-bottom:1px solid #e8e8e8;padding:8px 16px;display:flex;gap:3px;overflow-x:auto;}
+.sp{display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:14px;font-size:11px;font-weight:600;white-space:nowrap;cursor:pointer;transition:all .15s;border:1.5px solid transparent;}
+.sp.done{background:#e8f7f5;color:var(--teal);border-color:#c0ece8;}
+.sp.active{background:var(--navy);color:white;}
+.sp.pending{color:#aaa;border-color:#e8e8e8;}
+.sp .sn{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0;}
+.sp.done .sn{background:var(--teal);color:white;}
+.sp.active .sn{background:white;color:var(--navy);}
+.sp.pending .sn{background:#eee;color:#aaa;}
+
+/* MAIN */
+.main{padding:12px 16px;max-width:620px;padding-bottom:110px;}
+
+/* SECTION */
+.sec{background:white;border-radius:10px;padding:14px 16px;margin-bottom:11px;border:1px solid #e8e8e8;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--teal);margin-bottom:10px;display:flex;align-items:center;gap:7px;}
+.sec-line{flex:1;height:1px;background:#e8f7f5;}
+
+/* INFO BAR */
+.info-bar{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:6px;background:#eef8f7;color:#007a6e;font-size:11px;margin-bottom:10px;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0;}
+
+/* SEARCH */
+.search-wrap{position:relative;margin-bottom:8px;}
+.search-wrap input{width:100%;padding:7px 10px 7px 28px;border:1.5px solid #dde3ea;border-radius:6px;font-size:12.5px;}
+.search-wrap input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,168,150,.1);}
+.s-ico{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--teal);font-size:12px;pointer-events:none;}
+
+/* NB LIST */
+.nb-list{display:flex;flex-direction:column;gap:3px;max-height:300px;overflow-y:auto;padding-right:2px;}
+.nb-list::-webkit-scrollbar{width:4px;}
+.nb-list::-webkit-scrollbar-thumb{background:var(--teal);border-radius:4px;}
+.nb-card{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1.5px solid #e0e6ee;border-radius:7px;cursor:pointer;transition:all .12s;background:white;user-select:none;}
+.nb-card:hover{border-color:var(--teal);background:#f0fbf9;}
+.nb-card.active{border-color:var(--navy);background:#eef3f9;}
+.nb-dot{width:7px;height:7px;border-radius:50%;background:#e0e6ee;flex-shrink:0;transition:background .12s;}
+.nb-card:hover .nb-dot{background:var(--teal);}
+.nb-card.active .nb-dot{background:var(--gold);}
+.nb-body{flex:1;min-width:0;}
+.nb-title{font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nb-meta{font-size:10px;color:#999;margin-top:1px;}
+.nb-src{background:#f0fbf9;color:var(--teal);font-size:10px;font-weight:700;padding:2px 6px;border-radius:7px;white-space:nowrap;flex-shrink:0;}
+.nb-card.active .nb-src{background:var(--navy);color:var(--gold);}
+
+/* SEL BOX */
+.sel-box{background:var(--navy);border-radius:7px;padding:9px 12px;display:flex;align-items:center;gap:9px;}
+.sel-title{font-weight:700;font-size:13px;color:var(--gold);}
+.sel-meta{font-size:10.5px;color:#a0b8cc;margin-top:2px;}
+
+/* TYPE GRID */
+.type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+.type-card{position:relative;}
+.type-card input[type=checkbox]{position:absolute;opacity:0;width:0;height:0;}
+.type-card label{display:flex;flex-direction:column;align-items:center;padding:10px 6px 8px;border:1.5px solid #dde3ea;border-radius:9px;cursor:pointer;text-align:center;transition:all .13s;user-select:none;height:100%;}
+.type-card label:hover{border-color:var(--teal);background:#eef8f7;}
+.type-card input:checked + label{border-color:var(--navy);background:#eef3f9;box-shadow:0 0 0 2px rgba(27,58,92,.1);}
+.type-card input:checked + label .tc-icon{transform:scale(1.1);}
+.tc-icon{font-size:22px;margin-bottom:4px;transition:transform .15s;}
+.tc-name{font-size:11px;font-weight:700;color:var(--navy);}
+.tc-desc{font-size:9.5px;color:#888;margin-top:2px;line-height:1.3;}
+.type-card input:checked + label .tc-name{color:var(--navy);}
+.type-card input:checked + label .tc-badge{display:flex;}
+.tc-badge{display:none;position:absolute;top:5px;right:5px;width:16px;height:16px;background:var(--teal);border-radius:50%;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:800;}
+
+/* COUNT BADGE */
+.count-badge{background:var(--navy);color:var(--gold);font-size:11px;font-weight:800;padding:2px 10px;border-radius:10px;margin-left:8px;}
+
+/* OPTIONS PANELS */
+.opts-panels{display:flex;flex-direction:column;gap:8px;}
+.opt-panel{border:1.5px solid #e0e6ee;border-radius:8px;overflow:hidden;}
+.opt-header{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f8f9fb;cursor:pointer;user-select:none;}
+.opt-icon{font-size:17px;}
+.opt-name{font-size:12px;font-weight:700;color:var(--navy);flex:1;}
+.opt-arrow{font-size:11px;color:#aaa;transition:transform .2s;}
+.opt-arrow.open{transform:rotate(90deg);}
+.opt-body{padding:10px 12px;display:none;border-top:1px solid #eee;background:white;}
+.opt-body.open{display:block;}
+
+/* FIELD */
+.field{margin-bottom:11px;}
+.field:last-child{margin-bottom:0;}
+.fl{display:block;font-size:11px;font-weight:600;color:var(--navy);margin-bottom:4px;}
+.fd{font-size:10px;color:#888;margin-bottom:5px;}
+
+/* PILLS */
+.pills{display:flex;flex-wrap:wrap;gap:6px;}
+.po{position:relative;}
+.po input[type=radio]{position:absolute;opacity:0;width:0;height:0;}
+.po label{display:flex;align-items:center;gap:4px;padding:5px 11px;border-radius:16px;border:1.5px solid #dde3ea;font-size:12px;font-weight:500;color:#555;cursor:pointer;transition:all .12s;user-select:none;}
+.po label:hover{border-color:var(--teal);color:var(--teal);}
+.po input:checked + label{background:var(--navy);border-color:var(--navy);color:white;font-weight:600;}
+
+/* SELECT */
+select{width:100%;padding:6px 9px;border:1.5px solid #dde3ea;border-radius:6px;font-size:12.5px;font-family:inherit;color:var(--charcoal);background:white;cursor:pointer;}
+select:focus{outline:none;border-color:var(--teal);}
+
+/* EXEC SECTION */
+.exec-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;}
+.exec-row:last-child{border-bottom:none;}
+.exec-label{font-size:12px;font-weight:600;color:var(--navy);}
+.exec-sub{font-size:10px;color:#888;margin-top:1px;}
+
+/* TOGGLE */
+.tog{position:relative;width:36px;height:20px;flex-shrink:0;}
+.tog input{opacity:0;width:0;height:0;position:absolute;}
+.tog-track{position:absolute;inset:0;background:#ccc;border-radius:10px;cursor:pointer;transition:background .2s;}
+.tog-track::after{content:'';position:absolute;left:3px;top:2.5px;width:15px;height:15px;background:white;border-radius:50%;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.2);}
+.tog input:checked + .tog-track{background:var(--teal);}
+.tog input:checked + .tog-track::after{transform:translateX(16px);}
+
+/* BUTTONS */
+.btn-save{width:100%;padding:12px;background:var(--navy);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .15s;margin-bottom:8px;}
+.btn-save:hover:not(:disabled){background:#254d7a;transform:translateY(-1px);box-shadow:0 4px 12px rgba(27,58,92,.25);}
+.btn-save:disabled{background:#ccc;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-run{width:100%;padding:12px;background:var(--teal);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .15s;}
+.btn-run:hover:not(:disabled){background:#007a6e;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,168,150,.35);}
+.btn-run:disabled{background:#ccc;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-ref{font-size:11px;color:var(--teal);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;}
+
+/* SPINNER */
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* TOAST */
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:white;padding:9px 18px;border-radius:22px;font-size:12.5px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.success{background:#00796b;}
+.toast.error{background:#c0392b;}
+.toast.gold{background:#7a5500;}
+
+/* OUTPUT LOG */
+.log-box{background:#1a2a3a;color:#a0e8d0;font-family:'Courier New',monospace;font-size:11px;border-radius:7px;padding:10px 12px;max-height:140px;overflow-y:auto;margin-top:8px;line-height:1.6;display:none;}
+.log-box.open{display:block;}
+.log-line.ok{color:#4caf50;}
+.log-line.err{color:#ef5350;}
+.log-line.warn{color:#ffca28;}
+
+/* EMPTY */
+.empty{text-align:center;padding:20px;color:#bbb;font-size:12px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="h-icon">🚀</div>
+  <div>
+    <div class="h-title">Pipeline Configurator</div>
+    <div class="h-sub">NotebookLM → Multi-Output automatique</div>
+  </div>
+  <div class="h-badge">v2.0</div>
+</div>
+
+<!-- RESET BAR -->
+<div style="background:#fff8e8;border-bottom:1px solid #f0dfa0;padding:6px 16px;display:flex;align-items:center;justify-content:space-between;">
+  <span style="font-size:11px;color:#7a5a00;">9 types de sortie · Comet auth automatique · <strong>pipeline_config_v2.json</strong></span>
+  <button onclick="resetAll()" style="background:none;border:1.5px solid #C9A84C;color:#7a5a00;border-radius:5px;padding:2px 9px;font-size:11px;font-weight:600;cursor:pointer;">↺ Réinitialiser</button>
+</div>
+
+<!-- STEPPER -->
+<div class="stepper" id="stepper">
+  <div class="sp active" onclick="goSec('s1')"><span class="sn">1</span> Notebook</div>
+  <div class="sp pending" onclick="goSec('s2')"><span class="sn">2</span> Médias</div>
+  <div class="sp pending" onclick="goSec('s3')"><span class="sn">3</span> Options</div>
+  <div class="sp pending" onclick="goSec('s4')"><span class="sn">4</span> Exécution</div>
+  <div class="sp pending" onclick="goSec('s5')"><span class="sn">5</span> Lancer</div>
+</div>
+
+<div class="main">
+
+<!-- ═══ 1 — NOTEBOOK ═══ -->
+<div class="sec" id="s1">
+  <div class="sec-title">📒 1 — Notebook cible <div class="sec-line"></div></div>
+  <div class="info-bar">
+    <div class="dot"></div>
+    <span id="info-msg" style="flex:1">Chargement…</span>
+    <button id="btn-live" onclick="liveRefresh()" style="background:var(--teal);color:white;border:none;border-radius:5px;padding:3px 9px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;flex-shrink:0;">
+      <span id="live-icon">⟳</span> Live
+    </button>
+  </div>
+  <div class="search-wrap">
+    <span class="s-ico">🔍</span>
+    <input type="text" id="search" placeholder="Rechercher un notebook…" oninput="filterList()"/>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+    <span style="font-size:11px;color:#888;">Notebooks</span>
+    <span id="count-num" style="font-size:11px;font-weight:700;color:var(--navy);background:#eef3f9;padding:1px 7px;border-radius:7px;">—</span>
+  </div>
+  <div class="nb-list" id="nb-list"><div class="empty"><span class="spin" style="border-color:rgba(0,0,0,.1);border-top-color:var(--teal);"></span><br>Chargement notebooks…</div></div>
+</div>
+
+<!-- Sélection confirmée -->
+<div class="sec" id="sel-section" style="display:none">
+  <div class="sec-title">✅ Notebook sélectionné <div class="sec-line"></div></div>
+  <div class="sel-box">
+    <div style="font-size:20px;flex-shrink:0">📒</div>
+    <div><div class="sel-title" id="sel-title">—</div><div class="sel-meta" id="sel-meta">—</div></div>
+    <button onclick="document.getElementById('sel-section').style.display='none';document.getElementById('s1').scrollIntoView({behavior:'smooth'})" style="margin-left:auto;background:rgba(255,255,255,.15);color:#a0b8cc;border:1px solid rgba(255,255,255,.2);border-radius:5px;padding:3px 9px;font-size:11px;cursor:pointer;">Changer</button>
+  </div>
+</div>
+
+<!-- ═══ 2 — TYPES DE MÉDIA ═══ -->
+<div class="sec" id="s2">
+  <div class="sec-title">
+    🎛️ 2 — Types de sortie
+    <div class="sec-line"></div>
+    <span class="count-badge" id="type-count">0</span>
+  </div>
+  <div style="font-size:11px;color:#888;margin-bottom:10px;">Cochez tous les formats à générer pour ce notebook.</div>
+  <div class="type-grid" id="type-grid">
+    <!-- généré par JS -->
+  </div>
+  <div style="display:flex;gap:8px;margin-top:10px;">
+    <button onclick="selectAllTypes()" style="flex:1;padding:5px;background:#eef8f7;color:var(--teal);border:1.5px solid #c0ece8;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">✓ Tout sélectionner</button>
+    <button onclick="clearAllTypes()" style="flex:1;padding:5px;background:#fff;color:#888;border:1.5px solid #dde3ea;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">✕ Tout désélectionner</button>
+  </div>
+</div>
+
+<!-- ═══ 3 — OPTIONS PAR TYPE ═══ -->
+<div class="sec" id="s3">
+  <div class="sec-title">⚙️ 3 — Options par type <div class="sec-line"></div></div>
+  <div id="opts-panels" class="opts-panels">
+    <div class="empty" style="color:#ccc;font-size:12px;">Sélectionnez des types à l'étape 2 pour configurer leurs options.</div>
+  </div>
+</div>
+
+<!-- ═══ 4 — EXÉCUTION ═══ -->
+<div class="sec" id="s4">
+  <div class="sec-title">▶ 4 — Paramètres d'exécution <div class="sec-line"></div></div>
+
+  <div class="exec-row">
+    <div><div class="exec-label">Mode d'exécution</div><div class="exec-sub">Séquentiel = plus stable · Parallèle = plus rapide</div></div>
+    <select id="exec-mode" style="width:140px;">
+      <option value="sequential">Séquentiel</option>
+      <option value="parallel">Parallèle</option>
+    </select>
+  </div>
+
+  <div class="exec-row">
+    <div><div class="exec-label">Continuer si erreur</div><div class="exec-sub">Passe au type suivant si l'un échoue</div></div>
+    <label class="tog"><input type="checkbox" id="cont-err" checked/><span class="tog-track"></span></label>
+  </div>
+
+  <div class="exec-row">
+    <div><div class="exec-label">Intervalle polling</div><div class="exec-sub">Secondes entre chaque vérification de statut</div></div>
+    <select id="poll-interval" style="width:140px;">
+      <option value="10">10 secondes</option>
+      <option value="15" selected>15 secondes</option>
+      <option value="20">20 secondes</option>
+      <option value="30">30 secondes</option>
+    </select>
+  </div>
+
+  <div class="exec-row">
+    <div><div class="exec-label">Timeout par type</div><div class="exec-sub">Abandon si dépassé (audio/vidéo peuvent être longs)</div></div>
+    <select id="timeout-min" style="width:140px;">
+      <option value="8">8 minutes</option>
+      <option value="12" selected>12 minutes</option>
+      <option value="20">20 minutes</option>
+      <option value="30">30 minutes</option>
+    </select>
+  </div>
+
+  <div class="exec-row">
+    <div><div class="exec-label">Dossier de sortie</div><div class="exec-sub">Chemin où seront sauvegardés les fichiers générés</div></div>
+    <div></div>
+  </div>
+  <input type="text" id="output-dir" value="C:\Users\levan\AppData\Roaming\Claude\pipelines\notebooklm-infographer\outputs"
+    style="width:100%;padding:6px 9px;border:1.5px solid #dde3ea;border-radius:6px;font-size:11.5px;font-family:monospace;margin-top:4px;"/>
+</div>
+
+<!-- ═══ 5 — LANCER ═══ -->
+<div class="sec" id="s5">
+  <div class="sec-title">🚀 5 — Sauvegarder &amp; Lancer <div class="sec-line"></div></div>
+
+  <!-- Récap -->
+  <div id="recap" style="background:#eef3f9;border-radius:7px;padding:10px 12px;margin-bottom:12px;font-size:11.5px;line-height:1.8;">
+    <em style="color:#888;">Sélectionnez un notebook et au moins un type de sortie.</em>
+  </div>
+
+  <button class="btn-save" id="btn-save" onclick="saveConfig()" disabled>
+    💾 Sauvegarder pipeline_config_v2.json
+  </button>
+  <button class="btn-run" id="btn-run" onclick="runPipeline()" disabled>
+    ▶ Lancer le pipeline maintenant
+  </button>
+
+  <!-- Log -->
+  <div class="log-box" id="log-box"></div>
+</div>
+
+</div><!-- /main -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// TYPES DE SORTIE NLM
+// ══════════════════════════════════════════════
+const TYPES = [
+  {id:'audio',     icon:'🎙️', name:'Audio',       desc:'Podcast deep-dive',
+   opts:[
+     {id:'format',  label:'Format',  type:'pills', vals:[['deep_dive','Deep Dive'],['brief','Bref'],['overview','Aperçu'],['critique','Critique'],['debate','Débat']], def:'deep_dive'},
+     {id:'length',  label:'Durée',   type:'pills', vals:[['short','Court'],['default','Standard'],['long','Long']], def:'default'},
+     {id:'language',label:'Langue',  type:'pills', vals:[['fr','🇫🇷 FR'],['en','🇬🇧 EN'],['ar','🇲🇦 AR']], def:'fr'},
+   ]},
+  {id:'video',     icon:'🎬', name:'Vidéo',       desc:'Présentation animée',
+   opts:[
+     {id:'format',  label:'Format',  type:'pills', vals:[['explainer','Explicatif'],['cinematic','Cinématique']], def:'explainer'},
+   ]},
+  {id:'slide_deck',icon:'📊', name:'Slides',      desc:'Présentation PDF/PPTX',
+   opts:[
+     {id:'format',  label:'Format',  type:'pills', vals:[['detailed_deck','Détaillé'],['presenter_slides','Présentateur']], def:'detailed_deck'},
+     {id:'file_format',label:'Fichier',type:'pills',vals:[['pdf','PDF'],['pptx','PPTX']],def:'pdf'},
+     {id:'language',label:'Langue',  type:'pills', vals:[['fr','🇫🇷 FR'],['en','🇬🇧 EN'],['ar','🇲🇦 AR']], def:'fr'},
+   ]},
+  {id:'infographic',icon:'🖼️',name:'Infographie', desc:'Image synthèse visuelle',
+   opts:[
+     {id:'orientation',label:'Format',type:'pills',vals:[['landscape','Paysage'],['portrait','Portrait'],['square','Carré']],def:'landscape'},
+     {id:'style',   label:'Style',  type:'pills', vals:[['auto_select','Auto'],['clay','Pâte'],['sketch','Croquis'],['animated','Animé'],['editorial','Éditorial'],['educational','Éducatif'],['bento_grid','Bento'],['blocks','Briques'],['scientific','Scientifique']], def:'auto_select'},
+     {id:'language',label:'Langue', type:'pills', vals:[['fr','🇫🇷 FR'],['en','🇬🇧 EN'],['ar','🇲🇦 AR']], def:'fr'},
+   ]},
+  {id:'report',    icon:'📄', name:'Rapport',     desc:'Briefing Doc Markdown',
+   opts:[
+     {id:'format',  label:'Type',   type:'pills', vals:[['Briefing Doc','Briefing'],['Study Guide','Guide'],['FAQ','FAQ'],['Timeline','Timeline']], def:'Briefing Doc'},
+     {id:'language',label:'Langue', type:'pills', vals:[['fr','🇫🇷 FR'],['en','🇬🇧 EN'],['ar','🇲🇦 AR']], def:'fr'},
+   ]},
+  {id:'mind_map',  icon:'🧠', name:'Mind Map',    desc:'Carte mentale JSON',
+   opts:[
+     {id:'title',   label:'Titre',  type:'text',  def:'Synthèse', ph:'Titre de la mind map'},
+   ]},
+  {id:'flashcards',icon:'🃏', name:'Flashcards',  desc:'Fiches révision HTML',
+   opts:[
+     {id:'difficulty',label:'Niveau',type:'pills',vals:[['easy','Facile'],['medium','Moyen'],['hard','Difficile']],def:'medium'},
+   ]},
+  {id:'quiz',      icon:'❓', name:'Quiz',         desc:'QCM interactif HTML',
+   opts:[
+     {id:'question_count',label:'Questions',type:'pills',vals:[['5','5'],['10','10'],['15','15'],['20','20']],def:'10'},
+     {id:'difficulty',label:'Niveau',type:'pills',vals:[['easy','Facile'],['medium','Moyen'],['hard','Difficile']],def:'medium'},
+   ]},
+  {id:'data_table',icon:'📋', name:'Tableau',     desc:'Données structurées CSV',
+   opts:[]},
+];
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let allNotebooks = [];
+let selectedNb   = null;
+let selectedTypes = new Set();
+let typeOpts = {}; // {type_id: {opt_id: value}}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+window.addEventListener('load', () => {
+  buildTypeGrid();
+  loadNotebooks();
+});
+
+// ══════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════
+function mcpText(r){
+  if(typeof r==='string') return r;
+  if(r?.content?.[0]?.text) return r.content[0].text;
+  if(r?.result) return r.result;
+  return JSON.stringify(r);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast '+type;
+  void t.offsetWidth; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+function logLine(msg,cls=''){
+  const box=document.getElementById('log-box');
+  box.classList.add('open');
+  const d=document.createElement('div');
+  d.className='log-line '+(cls||'');
+  d.textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' '+msg;
+  box.appendChild(d);
+  box.scrollTop=box.scrollHeight;
+}
+
+// ══════════════════════════════════════════════
+// NOTEBOOKS — Live depuis nlm CLI
+// ══════════════════════════════════════════════
+async function loadNotebooks(){
+  document.getElementById('info-msg').textContent='Chargement via nlm…';
+  const cmd='cmd /c "nlm notebook list --json 2>&1"';
+  try {
+    const r = await window.cowork.callMcpTool('mcp__Windows-MCP__PowerShell',{command:cmd,timeout:25});
+    const txt = mcpText(r);
+    const iS=txt.indexOf('['), iE=txt.lastIndexOf(']');
+    if(iS===-1) throw new Error(txt.slice(0,120));
+    allNotebooks = JSON.parse(txt.slice(iS,iE+1));
+    renderList(allNotebooks);
+    document.getElementById('info-msg').textContent=`${allNotebooks.length} notebooks · ${new Date().toLocaleTimeString('fr-FR')}`;
+    showToast(`✅ ${allNotebooks.length} notebooks chargés`,'success');
+  } catch(e) {
+    document.getElementById('info-msg').textContent='Erreur : '+e.message.slice(0,60)+' — relancer Live';
+    document.getElementById('nb-list').innerHTML='<div class="empty">❌ Impossible de charger les notebooks.<br>Vérifiez que Comet est actif.</div>';
+  }
+}
+
+async function liveRefresh(){
+  const btn=document.getElementById('btn-live');
+  const icon=document.getElementById('live-icon');
+  btn.disabled=true; icon.style.animation='spin .7s linear infinite';
+  await loadNotebooks();
+  btn.disabled=false; icon.style.animation='';
+}
+
+function renderList(list){
+  const c=document.getElementById('nb-list');
+  c.innerHTML='';
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  document.getElementById('count-num').textContent=list.length<allNotebooks.length?`${list.length}/${allNotebooks.length}`:allNotebooks.length;
+  if(!list.length){c.innerHTML='<div class="empty">Aucun notebook trouvé.</div>';return;}
+  list.forEach(nb=>{
+    const active=selectedNb?.id===nb.id;
+    const card=document.createElement('div');
+    card.className='nb-card'+(active?' active':'');
+    card.dataset.id=nb.id;
+    card.onclick=()=>selectNb(nb);
+    const d=nb.updated_at?new Date(nb.updated_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):
+             nb.modified_at?new Date(nb.modified_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'—';
+    card.innerHTML=`<div class="nb-dot"></div><div class="nb-body"><div class="nb-title">${esc(nb.title)}</div><div class="nb-meta">${nb.source_count||0} sources · ${d}</div></div><span class="nb-src">📄 ${nb.source_count||0}</span>`;
+    c.appendChild(card);
+  });
+}
+
+function filterList(){
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  renderList(q?allNotebooks.filter(n=>n.title.toLowerCase().includes(q)):allNotebooks);
+}
+
+function selectNb(nb){
+  selectedNb=nb;
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  renderList(q?allNotebooks.filter(n=>n.title.toLowerCase().includes(q)):allNotebooks);
+  document.getElementById('sel-title').textContent=nb.title;
+  document.getElementById('sel-meta').textContent=`${nb.source_count||0} sources · ID: ${nb.id.slice(0,8)}…`;
+  document.getElementById('sel-section').style.display='block';
+  updateRecap(); checkReady();
+  updateStepper(1);
+  showToast('📒 '+nb.title.slice(0,40),'success');
+}
+
+// ══════════════════════════════════════════════
+// TYPE GRID
+// ══════════════════════════════════════════════
+function buildTypeGrid(){
+  const grid=document.getElementById('type-grid');
+  grid.innerHTML='';
+  TYPES.forEach(t=>{
+    const div=document.createElement('div');
+    div.className='type-card';
+    const cid='tc-'+t.id;
+    div.innerHTML=`
+      <span class="tc-badge" id="badge-${t.id}">✓</span>
+      <input type="checkbox" id="${cid}" onchange="toggleType('${t.id}',this.checked)"/>
+      <label for="${cid}">
+        <span class="tc-icon">${t.icon}</span>
+        <span class="tc-name">${t.name}</span>
+        <span class="tc-desc">${t.desc}</span>
+      </label>`;
+    grid.appendChild(div);
+    // Init opts
+    typeOpts[t.id]={};
+    t.opts.forEach(o=>{ typeOpts[t.id][o.id]=o.def; });
+  });
+}
+
+function toggleType(tid,checked){
+  if(checked){
+    selectedTypes.add(tid);
+  } else {
+    selectedTypes.delete(tid);
+  }
+  document.getElementById('type-count').textContent=selectedTypes.size;
+  buildOptPanels();
+  updateRecap(); checkReady();
+  updateStepper(2);
+}
+
+function selectAllTypes(){
+  TYPES.forEach(t=>{
+    selectedTypes.add(t.id);
+    document.getElementById('tc-'+t.id).checked=true;
+  });
+  document.getElementById('type-count').textContent=selectedTypes.size;
+  buildOptPanels(); updateRecap(); checkReady();
+}
+function clearAllTypes(){
+  selectedTypes.clear();
+  TYPES.forEach(t=>{ document.getElementById('tc-'+t.id).checked=false; });
+  document.getElementById('type-count').textContent=0;
+  buildOptPanels(); updateRecap(); checkReady();
+}
+
+// ══════════════════════════════════════════════
+// OPTIONS PANELS
+// ══════════════════════════════════════════════
+function buildOptPanels(){
+  const container=document.getElementById('opts-panels');
+  if(selectedTypes.size===0){
+    container.innerHTML='<div class="empty" style="color:#ccc;font-size:12px;">Sélectionnez des types à l\'étape 2 pour configurer leurs options.</div>';
+    return;
+  }
+  container.innerHTML='';
+  TYPES.filter(t=>selectedTypes.has(t.id)).forEach(t=>{
+    const panel=document.createElement('div');
+    panel.className='opt-panel';
+    let optsHtml='';
+    if(t.opts.length===0){
+      optsHtml='<div style="color:#999;font-size:11.5px;font-style:italic;">Aucune option disponible pour ce type.</div>';
+    } else {
+      t.opts.forEach(o=>{
+        if(o.type==='pills'){
+          const pillsHtml=o.vals.map(([v,label],i)=>{
+            const chk=(typeOpts[t.id][o.id]===v)?'checked':'';
+            const rid=`${t.id}_${o.id}_${i}`;
+            return `<div class="po"><input type="radio" name="${t.id}_${o.id}" id="${rid}" value="${esc(v)}" ${chk} onchange="setOpt('${t.id}','${o.id}','${v}')"/><label for="${rid}">${esc(label)}</label></div>`;
+          }).join('');
+          optsHtml+=`<div class="field"><label class="fl">${esc(o.label)}</label><div class="pills">${pillsHtml}</div></div>`;
+        } else if(o.type==='text'){
+          const val=typeOpts[t.id][o.id]||o.def||'';
+          optsHtml+=`<div class="field"><label class="fl">${esc(o.label)}</label><input type="text" value="${esc(val)}" placeholder="${esc(o.ph||'')}" oninput="setOpt('${t.id}','${o.id}',this.value)" style="width:100%;padding:6px 9px;border:1.5px solid #dde3ea;border-radius:6px;font-size:12.5px;"/></div>`;
+        }
+      });
+    }
+    panel.innerHTML=`
+      <div class="opt-header" onclick="togglePanel(this)">
+        <span class="opt-icon">${t.icon}</span>
+        <span class="opt-name">${t.name}</span>
+        <span class="opt-arrow open">›</span>
+      </div>
+      <div class="opt-body open">${optsHtml}</div>`;
+    container.appendChild(panel);
+  });
+}
+
+function togglePanel(header){
+  const body=header.nextElementSibling;
+  const arrow=header.querySelector('.opt-arrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+function setOpt(tid,oid,val){
+  typeOpts[tid][oid]=val;
+}
+
+// ══════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════
+function buildConfig(){
+  const outputs={};
+  selectedTypes.forEach(tid=>{
+    outputs[tid]={...typeOpts[tid]};
+  });
+  return {
+    _comment:'NotebookLM Multi-Output Pipeline v2.0 — généré par Configurateur',
+    _version:'2.0',
+    _generated:new Date().toISOString(),
+    notebook:{
+      name: selectedNb?.title||'',
+      id:   selectedNb?.id||'',
+      match_mode:'contains'
+    },
+    output_types:[...selectedTypes],
+    outputs,
+    execution:{
+      mode:       document.getElementById('exec-mode').value,
+      continue_on_error: document.getElementById('cont-err').checked,
+      polling_interval_s: parseInt(document.getElementById('poll-interval').value),
+      timeout_min: parseInt(document.getElementById('timeout-min').value),
+    },
+    output_dir: document.getElementById('output-dir').value
+  };
+}
+
+function updateRecap(){
+  const el=document.getElementById('recap');
+  if(!selectedNb || selectedTypes.size===0){
+    el.innerHTML='<em style="color:#888;">Sélectionnez un notebook et au moins un type de sortie.</em>';
+    return;
+  }
+  const typeNames=TYPES.filter(t=>selectedTypes.has(t.id)).map(t=>`${t.icon} ${t.name}`).join(' &nbsp;·&nbsp; ');
+  el.innerHTML=`
+    <div style="margin-bottom:5px;"><strong style="color:var(--navy);">Notebook :</strong> ${esc(selectedNb.title)}</div>
+    <div style="margin-bottom:5px;"><strong style="color:var(--navy);">Sorties (${selectedTypes.size}) :</strong> ${typeNames}</div>
+    <div><strong style="color:var(--navy);">Mode :</strong> ${document.getElementById('exec-mode').value} &nbsp;·&nbsp; <strong>Timeout :</strong> ${document.getElementById('timeout-min').value}min</div>`;
+}
+
+function checkReady(){
+  const ok=selectedNb && selectedTypes.size>0;
+  document.getElementById('btn-save').disabled=!ok;
+  document.getElementById('btn-run').disabled=!ok;
+}
+
+// ══════════════════════════════════════════════
+// SAVE
+// ══════════════════════════════════════════════
+async function saveConfig(){
+  if(!selectedNb||selectedTypes.size===0) return;
+  const btn=document.getElementById('btn-save');
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> Sauvegarde…';
+  try {
+    const cfg=buildConfig();
+    const json=JSON.stringify(cfg,null,2).replace(/\\/g,'\\\\').replace(/'/g,"''").replace(/\r/g,'');
+    const psCmd=`
+$dir='C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer'
+if(!(Test-Path $dir)){New-Item -ItemType Directory -Force -Path $dir|Out-Null}
+@'
+${JSON.stringify(cfg,null,2)}
+'@ | Out-File -FilePath "$dir\\pipeline_config_v2.json" -Encoding utf8 -Force
+Write-Output "SAVED_OK"`;
+    const res=await window.cowork.callMcpTool('mcp__Windows-MCP__PowerShell',{command:psCmd,timeout:15});
+    const txt=mcpText(res);
+    if(txt.includes('SAVED_OK')||txt.includes('Status Code: 0')){
+      showToast('✅ pipeline_config_v2.json sauvegardé !','success');
+      updateStepper(4);
+      logLine('✓ pipeline_config_v2.json sauvegardé','ok');
+    } else {
+      throw new Error(txt.slice(0,120));
+    }
+  } catch(e){
+    showToast('❌ '+e.message.slice(0,80),'error');
+    logLine('✗ Erreur sauvegarde : '+e.message,'err');
+  } finally {
+    btn.disabled=false; btn.innerHTML='💾 Sauvegarder pipeline_config_v2.json';
+    checkReady();
+  }
+}
+
+// ══════════════════════════════════════════════
+// RUN PIPELINE
+// ══════════════════════════════════════════════
+async function runPipeline(){
+  if(!selectedNb||selectedTypes.size===0) return;
+  const btn=document.getElementById('btn-run');
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> Lancement en cours…';
+  document.getElementById('log-box').innerHTML='';
+  logLine('Sauvegarde config v2…');
+  await saveConfig();
+  logLine('Lancement pipeline_runner_v2.py…');
+  const cfg=buildConfig();
+  const types=cfg.output_types.join(',');
+  const nb=cfg.notebook.name.replace(/'/g,"''");
+  const cfgPath='C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer\\pipeline_config_v2.json';
+  const pyPath='C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer\\pipeline_runner_v2.py';
+  const psLaunch=`Start-Process "C:\\Python314\\python.exe" -ArgumentList '"${pyPath}" --config "${cfgPath}"' -NoNewWindow -PassThru -RedirectStandardOutput "C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer\\logs\\pipeline_v2_out.txt" -RedirectStandardError "C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer\\logs\\pipeline_v2_err.txt"; Write-Output "LAUNCHED"`;
+  try {
+    const r=await window.cowork.callMcpTool('mcp__Windows-MCP__PowerShell',{command:psLaunch,timeout:15});
+    const txt=mcpText(r);
+    if(txt.includes('LAUNCHED')||txt.includes('Status Code: 0')){
+      showToast('▶ Pipeline lancé en arrière-plan !','gold');
+      logLine('✓ Pipeline démarré en arrière-plan','ok');
+      logLine(`Types : ${types}`,'ok');
+      logLine(`Logs : pipelines/notebooklm-infographer/logs/`);
+      updateStepper(5);
+      // Polling du fichier de log
+      pollPipelineLog();
+    } else {
+      throw new Error(txt.slice(0,120));
+    }
+  } catch(e){
+    showToast('❌ '+e.message.slice(0,80),'error');
+    logLine('✗ Erreur lancement : '+e.message,'err');
+  } finally {
+    btn.disabled=false; btn.innerHTML='▶ Lancer le pipeline maintenant';
+  }
+}
+
+async function pollPipelineLog(){
+  const psRead=`if(Test-Path "C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer\\logs\\pipeline_v2_out.txt"){Get-Content "C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer\\logs\\pipeline_v2_out.txt" -Tail 8 -Encoding utf8}else{"NO_LOG"}`;
+  let prev='', iters=0;
+  const timer=setInterval(async()=>{
+    iters++;
+    if(iters>40){clearInterval(timer);return;}
+    try {
+      const r=await window.cowork.callMcpTool('mcp__Windows-MCP__PowerShell',{command:psRead,timeout:8});
+      const txt=mcpText(r).replace(/\x1B\[[0-9;]*m/g,'').trim();
+      if(txt&&txt!=='NO_LOG'&&txt!==prev){
+        const lines=txt.split('\n').filter(l=>l.trim());
+        const newLines=prev?lines.slice(lines.findIndex(l=>!prev.includes(l))):lines;
+        newLines.forEach(line=>{
+          const cls=line.includes('✓')||line.includes('OK')?'ok':line.includes('✗')||line.includes('ERR')?'err':line.includes('!')?'warn':'';
+          logLine(line.trim(),cls);
+        });
+        prev=txt;
+      }
+      if(txt.includes('TOUS LES TYPES')||txt.includes('RAPPORT')){
+        clearInterval(timer);
+        logLine('=== Pipeline terminé ===','ok');
+        showToast('✅ Pipeline terminé !','success');
+      }
+    } catch(e){}
+  }, 3000);
+}
+
+// ══════════════════════════════════════════════
+// STEPPER
+// ══════════════════════════════════════════════
+function updateStepper(activeStep){
+  document.querySelectorAll('.sp').forEach((p,i)=>{
+    p.className='sp '+(i<activeStep?'done':i===activeStep?'active':'pending');
+  });
+}
+
+function goSec(id){
+  document.getElementById(id).scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ══════════════════════════════════════════════
+// RESET
+// ══════════════════════════════════════════════
+function resetAll(){
+  selectedNb=null; selectedTypes.clear();
+  document.getElementById('sel-section').style.display='none';
+  document.getElementById('search').value='';
+  renderList(allNotebooks);
+  buildTypeGrid();
+  buildOptPanels();
+  document.getElementById('type-count').textContent=0;
+  document.getElementById('exec-mode').value='sequential';
+  document.getElementById('cont-err').checked=true;
+  document.getElementById('poll-interval').value='15';
+  document.getElementById('timeout-min').value='12';
+  document.getElementById('output-dir').value='C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer\\outputs';
+  updateRecap(); checkReady();
+  document.querySelectorAll('.sp').forEach((p,i)=>{ p.className='sp '+(i===0?'active':'pending'); });
+  document.getElementById('log-box').classList.remove('open');
+  document.getElementById('log-box').innerHTML='';
+  window.scrollTo({top:0,behavior:'smooth'});
+  showToast('↺ Formulaire réinitialisé');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+﻿{
+    "_comment":  "=== NotebookLM Auto-Infographer â€” Configuration ===",
+    "_version":  "1.0",
+    "_author":  "Christian Levannier",
+    "_updated":  "2026-05-31",
+    "notebook":  {
+                     "_comment":  "Nom exact du notebook NotebookLM (correspondance partielle acceptÃ©e)",
+                     "name":  "2,1 Affaire Rakuten",
+                     "match_mode":  "contains",
+                     "_options_match_mode":  [
+                                                 "exact",
+                                                 "contains",
+                                                 "starts_with"
+                                             ]
+                 },
+    "schedule":  {
+                     "_comment":  "Format cron standard : minute heure jour mois jour_semaine",
+                     "cron":  "0 8 * * 1",
+                     "_examples":  {
+                                       "chaque_lundi_8h":  "0 8 * * 1",
+                                       "chaque_jour_7h":  "0 7 * * *",
+                                       "dimanche_soir_20h":  "0 20 * * 0",
+                                       "premier_du_mois_9h":  "0 9 1 * *",
+                                       "lun_mer_ven_8h30":  "30 8 * * 1,3,5"
+                                   },
+                     "enabled":  true,
+                     "timezone":  "Europe/Paris"
+                 },
+    "analysis":  {
+                     "_comment":  "Phase d\u0027analyse avant gÃ©nÃ©ration â€” guide le focus_prompt",
+                     "enabled":  true,
+                     "query":  "Quels sont les points clÃ©s, la chronologie, les parties impliquÃ©es, les enjeux et l\u0027Ã©tat actuel de ce dossier ?",
+                     "include_notes":  true
+                 },
+    "infographic":  {
+                        "_comment":  "ParamÃ¨tres de l\u0027infographie gÃ©nÃ©rÃ©e par NotebookLM Studio",
+                        "style":  "auto_select",
+                        "_options_style":  [
+                                               "auto_select",
+                                               "timeline",
+                                               "flowchart",
+                                               "comparison",
+                                               "statistics",
+                                               "process",
+                                               "hierarchical"
+                                           ],
+                        "orientation":  "landscape",
+                        "_options_orientation":  [
+                                                     "landscape",
+                                                     "portrait"
+                                                 ],
+                        "detail_level":  "detailed",
+                        "_options_detail_level":  [
+                                                      "brief",
+                                                      "standard",
+                                                      "detailed"
+                                                  ],
+                        "language":  "fr",
+                        "focus_prompt":  "SynthÃ¨se visuelle complÃ¨te : faits clÃ©s, chronologie des Ã©vÃ©nements, parties impliquÃ©es, enjeux juridiques ou administratifs, dÃ©marches effectuÃ©es et Ã©tat actuel du dossier",
+                        "title_pattern":  "{date} â€” {notebook_name} â€” SynthÃ¨se",
+                        "include_sources":  "all",
+                        "_options_include_sources":  [
+                                                         "all",
+                                                         "recent",
+                                                         "selected"
+                                                     ]
+                    },
+    "output":  {
+                   "_comment":  "Dossier et nom de fichier de destination",
+                   "folder":  "C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer\\outputs",
+                   "_folder_alternatives":  [
+                                                "C:/Users/levan/Desktop/Infographies",
+                                                "C:/Users/levan/OneDrive/Infographies",
+                                                "C:/Users/levan/Documents/Dossiers/Infographies"
+                                            ],
+                   "filename_pattern":  "{date}_{notebook_slug}_{orientation}_Infographie.png",
+                   "_pattern_variables":  {
+                                              "{date}":  "Date au format AAAA-MM-JJ",
+                                              "{time}":  "Heure au format HHhMM",
+                                              "{notebook_name}":  "Titre complet du notebook",
+                                              "{notebook_slug}":  "Titre nettoyÃ© (sans espaces ni caractÃ¨res spÃ©ciaux)",
+                                              "{orientation}":  "portrait ou landscape",
+                                              "{style}":  "Style sÃ©lectionnÃ©"
+                                          },
+                   "overwrite_if_exists":  false,
+                   "keep_last_n":  10,
+                   "_comment_keep":  "Conserver les N derniÃ¨res infographies, supprimer les plus anciennes (0 = garder tout)"
+               },
+    "notifications":  {
+                          "enabled":  true,
+                          "on_success":  true,
+                          "on_failure":  true,
+                          "log_file":  "C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer\\logs\\pipeline_log.json"
+                      },
+    "retry":  {
+                  "_comment":  "En cas d\u0027Ã©chec de gÃ©nÃ©ration NotebookLM",
+                  "max_attempts":  3,
+                  "wait_seconds_between":  30
+              },
+    "polling":  {
+                    "_comment":  "VÃ©rification du statut de gÃ©nÃ©ration",
+                    "interval_seconds":  20,
+                    "max_wait_seconds":  180
+                },
+    "_location":  "C:\\Users\\levan\\AppData\\Roaming\\Claude\\pipelines\\notebooklm-infographer\\"
+}
